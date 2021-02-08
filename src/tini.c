@@ -356,6 +356,8 @@ void add_file_change(char* const filename) {
 		new->last_ctime = 0;
 	}
 
+	PRINT_DEBUG("Found a new file: %s, dev: %lu, ino: %lu mtime: %ld, ctime: %ld", new->filename, new->last_dev, new->last_ino, new->last_mtime, new->last_ctime);
+
 	if(!file_change_files) {
 		file_change_files = new;
 	} else {
@@ -686,9 +688,13 @@ int kill_on_change_files(pid_t child_pid) {
 			if(	curr->last_dev != file_st.st_dev ||
 				curr->last_ino != file_st.st_ino ||
 				curr->last_mtime != file_st.st_mtime ||
-				curr->last_ctime != file_st.st_ctime ||
+				// curr->last_ctime != file_st.st_ctime ||
 				0) {
-				PRINT_DEBUG("Found new/changed file: %s", curr->filename);
+				PRINT_DEBUG(
+					"Found change for file: %s, dev: %lu -> %lu, ino: %lu -> %lu, mtime: %ld -> %ld, ctime [ignored]: %ld -> %ld",
+					curr->filename, curr->last_dev, file_st.st_dev, curr->last_ino, file_st.st_ino, curr->last_mtime,
+					file_st.st_mtime, curr->last_ctime, file_st.st_ctime
+				);
 				changed = 1;
 				curr->last_dev = file_st.st_dev;
 				curr->last_ino = file_st.st_ino;
@@ -706,7 +712,7 @@ int kill_on_change_files(pid_t child_pid) {
 	}
 
 	if(changed) {
-		PRINT_INFO("files changed, killing %d with %d", child_pid, file_change_signal);
+		PRINT_INFO("Files changed, sending %d signal to %d", file_change_signal, child_pid);
 		kill(kill_process_group ? -child_pid : child_pid, file_change_signal);
 	}
 
